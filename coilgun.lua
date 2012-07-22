@@ -253,7 +253,7 @@ function create_project(config)
 
 -- Создаем внешний магнитопровод
 	if (l_mag > 0) then 
-        if (l_mag_y <=0) then l_mag_y = l_mag end
+		if (l_mag_y <=0) then l_mag_y = l_mag end
 		mi_addnode(d_stv/2,l_kat/2+l_mag_y)
 		mi_addnode(d_kat/2+l_mag,l_kat/2+l_mag_y)
 		mi_addnode(d_kat/2+l_mag,-l_kat/2-l_mag_y)	

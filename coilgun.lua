@@ -165,8 +165,8 @@ function create_project(config)
 		mi_addnode(0,l_kat/2-l_sdv)
 		mi_addnode(d_puli/2,l_kat/2-l_sdv)
 		mi_addnode(d_puli/2,l_kat/2+l_puli-l_sdv)
-        -- точки для отверстия в пуле
-        if d_otv>0 then 
+		-- точки для отверстия в пуле
+		if d_otv>0 then 
 			mi_addnode(0,l_kat/2-l_sdv+l_puli-l_otv) -- точка внутри на средней линии
 			mi_addnode(d_otv/2,l_kat/2-l_sdv+l_puli-l_otv) -- точка внутри пули
 			mi_addnode(d_otv/2,l_kat/2+l_puli-l_sdv) -- точка на донышке пули
@@ -258,7 +258,7 @@ function create_project(config)
 		mi_addnode(d_kat/2+l_mag,l_kat/2+l_mag_y)
 		mi_addnode(d_kat/2+l_mag,-l_kat/2-l_mag_y)	
 		mi_addnode(d_stv/2,-l_kat/2-l_mag_y)
-	
+
 		mi_addsegment(d_stv/2,l_kat/2,d_stv/2,l_kat/2+l_mag_y)
 		mi_addsegment(d_stv/2,l_kat/2+l_mag_y,d_kat/2+l_mag,l_kat/2+l_mag_y)
 		mi_addsegment(d_kat/2+l_mag,l_kat/2+l_mag_y,d_kat/2+l_mag,-l_kat/2-l_mag_y)

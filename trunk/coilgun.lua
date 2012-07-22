@@ -482,7 +482,7 @@ function save_result_to_file(file_name, config, result)
 	save(format("Максимальная скорость пули, м/с = %.1f", result.v_max))
 
 	save("\n------ Data of simulation -------------------------------")
-	save("    Ток(А)    Напр(В)    Сила(Н) Скор.(м/с)   Поз.(мм) Врем.(мкс)\n")
+	save("    Ток(А)    Напр(В)    Сила(Н) Скор.(м/с)   Поз.(мм) Врем.(мкс)")
 	for i, item in result.items do
 		save(
 			format(

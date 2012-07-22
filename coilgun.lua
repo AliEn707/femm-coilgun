@@ -477,9 +477,9 @@ function save_result_to_file(file_name, config, result)
 	save(format("КПД, %%                             = %.2f", result.eff))
 
 	save("\n------ СКОРОСТЬ ----------------------------------------")
-	save(format("Начальная скорость пули, м/с   = %.1f", config.vel0))
-	save(format("Конечная скорость пули, м/с    = %.1f", result.vel))
-	save(format("Максимальая скорость пули, м/с = %.1f", result.v_max))
+	save(format("Начальная скорость пули, м/с    = %.1f", config.vel0))
+	save(format("Конечная скорость пули, м/с     = %.1f", result.vel))
+	save(format("Максимальная скорость пули, м/с = %.1f", result.v_max))
 
 	save("\n------ Data of simulation -------------------------------")
 	save("    Ток(А)    Напр(В)    Сила(Н) Скор.(м/с)   Поз.(мм) Врем.(мкс)\n")

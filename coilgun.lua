@@ -17,33 +17,16 @@ coil_name     = "katushka"
 
 ----[ Чтение начальных данных из текстового файла ]--------------------------------------------------------------------
 function read_config_file(file_name)
-	local config = {}
-	local handle = openfile(file_name,"r")
-	read(handle, "*l")
-	read(handle, "*l")
-	read(handle, "*l")
-	read(handle, "*l")
+	conf = {}
+	opt = {}
 	
-	config.c       = read(handle, "*n", "*l") -- Емкость конденсатора, микроФарад
-	config.u       = read(handle, "*n", "*l") -- Напряжение на конденсаторе, Вольт 
-	config.r_sw    = read(handle, "*n", "*l") -- Сопротивление ключа, Ом 
-	config.d_pr    = read(handle, "*n", "*l") -- Диаметр обмоточного провода катушки, милиметр
-	config.l_kat   = read(handle, "*n", "*l") -- Длина катушки (не задавать меньше диаметра обмот. провода катушки), милиметр
-	config.d_kat   = read(handle, "*n", "*l") -- Внешний диаметр катушки, милиметр
-	config.l_mag   = read(handle, "*n", "*l") -- Толщина щёчек внешнего магнитопровода, по форме повторяет катушку, если ноль то его нет, милиметр
-	config.l_mag_y = read(handle, "*n", "*l") -- Толщина стенки внешнего магнитопровода, если 0 то равно щёчкам.
-	config.k_ark   = read(handle, "*n", "*l") -- Толщина каркаса катушки
-	config.k_mot   = read(handle, "*n", "*l") -- Плотность намотки (0,7-0,95) или количество витков
-	config.l_puli  = read(handle, "*n", "*l") -- Длина пули, милиметр
-	config.d_puli  = read(handle, "*n", "*l") -- Диаметр пули, милиметр
-	config.l_otv   = read(handle, "*n", "*l") -- Глубина отверстия в пуле, милиметр 
-	config.d_otv   = read(handle, "*n", "*l") -- Диаметр отверстия в пуле, милиметр (0 - если нет отверстия)
-	config.nagr    = read(handle, "*n", "*l") -- Масса дополнительной нагрузки или оперения, грамм
-	config.l_sdv   = read(handle, "*n", "*l") -- Расстояние, на которое в начальный момент вдвинута пуля в катушку или находится до катушки с минусом, милиметр
-	config.d_stv   = read(handle, "*n", "*l") -- Внешний диаметр ствола (не задавать меньше диаметра пули), милиметр
-	config.vel0    = read(handle, "*n", "*l") -- Начальная скорость пули, м/с (Вместо 0 лучше какое-то небольшое значение, иначе долго на месте стоит)
-	config.delta_t = read(handle, "*n", "*l") -- Приращение времени, мкС 
-	config.mode    = read(handle, "*n", "*l") -- mode 
+	dofile(file_name)
+	
+	local config = conf
+	config.opt_params = {}
+	for name, value in opt do
+		if value ~= nil then config.opt_params[name] = value end
+	end
 	
 	local t_iz = sqrt(config.d_pr) * 0.07
 	config.d_pr_iz = config.d_pr+t_iz -- Диаметр провода в изоляции
@@ -71,6 +54,10 @@ function read_config_file(file_name)
 	config.l_mag   = config.l_mag / 1000
 	config.l_mag_y = config.l_mag_y / 1000
 	config.nagr    = config.nagr / 1000
+	
+	if config.opt_params.l_kat ~= nil then config.opt_params.l_kat = config.opt_params.l_kat/1000 end
+	if config.opt_params.d_kat ~= nil then config.opt_params.d_kat = config.opt_params.d_kat/1000 end
+	if config.opt_params.l_sdv ~= nil then config.opt_params.l_sdv = config.opt_params.l_sdv/1000 end
 	
 	return config
 end
@@ -422,6 +409,8 @@ function simulate(config)
 	-- Удаляем промежуточные файлы
 	remove ("temp.fem")
 	remove ("temp.ans")
+	
+	mi_close()
 
 	return result
 end
@@ -500,24 +489,120 @@ function save_result_to_file(file_name, config, result)
 	closefile(handle)
 end
 
+----[ Функция, которая пытается найти оптимальные значения для data, перебирая opt_params ]----------------------------
+function optimize(data, opt_params, fun, log)
+	function get_values_str()
+		local str = ""
+		for o_name, o_value in %opt_params do
+			if str ~= "" then str = str .. " " end
+			str = str .. o_name .. "=" .. %data[o_name]
+		end
+		return str
+	end
+	
+	local cache = {}
+	function get_cached_result()
+		local key = get_values_str()
+		if %cache[key] == nil then %cache[key] = %fun(%data) end
+		return %cache[key]
+	end
+
+	function log_str(str)
+		if %log == nil then return end
+		%log(str)
+	end
+	
+	function log_cur_values()
+		local str = get_values_str()
+		log_str("пробую " .. str .. "...")
+	end
+	
+	local cur_result = get_cached_result()
+	log_str("исх. результат = " .. cur_result .. " для " .. get_values_str())
+	
+	while 1 do
+		local was_optimized = 0
+		for o_name, o_value in opt_params do
+			local prev_value = data[o_name]
+			data[o_name] = data[o_name] + o_value
+			log_cur_values()
+			local next_result = get_cached_result()
+			log_str("результат = " .. next_result)
+			if next_result > cur_result then
+				log_str("хорошо :)")
+				was_optimized = 1
+				cur_result = next_result
+			else
+				log_str("плохо :(")
+				data[o_name] = prev_value
+				opt_params[o_name] = -opt_params[o_name]
+				data[o_name] = data[o_name] + opt_params[o_name]
+				log_cur_values()
+				next_result = get_cached_result()
+				log_str("результат = " .. next_result)
+				if next_result > cur_result then
+					log_str("хорошо :)")
+					was_optimized = 1
+					cur_result = next_result
+				else
+					log_str("плохо :(")
+					data[o_name] = prev_value
+				end
+			end
+		end
+		if was_optimized == 0 then break end
+	end
+	log_str("Готово! Оптимальные значения: " .. get_values_str())
+end
+
 ----[ Собственно, вся работа скрипта ]---------------------------------------------------------------------------------
 
 -- Читаем конфиг
 local conf_file_name=prompt("Введите имя файла даных, без расширения .txt") 
 local config = read_config_file(conf_file_name .. ".txt")
 
--- Создаём проект
-create_project(config)
+-- Если не надо ничего оптимизировать
+if (config.opt == 0) or (config.opt_params == {}) then 
 
--- Симулируем выстрел
-local result = simulate(config)
+	-- Создаём проект
+	create_project(config)
 
--- Сохраняем результаты в файл
-local res_file_name = conf_file_name .. " V = " .. result.vel .. ".txt"
-save_result_to_file(res_file_name, config, result)
+	-- Симулируем выстрел
+	local result = simulate(config)
 
--- Выводим информацию в консоль
-showconsole()
-clearconsole()
-print ("-----------------------------------")
-print ("Полученные данные записаны в файл: " .. res_file_name)
+	-- Сохраняем результаты в файл
+	local res_file_name = conf_file_name .. " V = " .. result.vel .. ".txt"
+	save_result_to_file(res_file_name, config, result)
+
+	-- Выводим информацию в консоль
+	showconsole()
+	clearconsole()
+	print ("-----------------------------------")
+	print ("Полученные данные записаны в файл: " .. res_file_name)
+	
+-- Оптимизируем по config.opt_params
+else
+	showconsole()
+	clearconsole()
+
+	function opt_shot(config)
+		create_project(config)
+		local result = simulate(config)
+		return result.vel
+	end
+
+	-- Подбираем оптимальные значения
+	optimize(config, config.opt_params, opt_shot, print)
+	
+	-- Считаем ещё раз с оптимальным результатом
+	create_project(config)
+	local result = simulate(config)
+
+	-- Сохраняем результаты в файл
+	local res_file_name = conf_file_name .. " Vopt = " .. result.vel .. ".txt"
+	save_result_to_file(res_file_name, config, result)
+
+	-- Выводим информацию в консоль
+	print ("-----------------------------------")
+	print ("Оптимизированные данные записаны в файл: " .. res_file_name)
+end

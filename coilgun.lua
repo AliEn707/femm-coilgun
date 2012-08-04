@@ -257,7 +257,6 @@ function create_project(config)
 		mi_clearselected()
 		mi_selectlabel(d_kat/2+l_mag/2,0)
 		mi_setblockprop(name_mat, 1, "", "", "",3) -- номер блока 3
-
 	end
 	mi_clearselected()
 end
@@ -562,7 +561,7 @@ local conf_file_name=prompt("Введите имя файла даных, без расширения .txt")
 local config = read_config_file(conf_file_name .. ".txt")
 
 -- Если не надо ничего оптимизировать
-if (config.opt == 0) or (config.opt_params == {}) then 
+if (config.opt == null) or (config.opt == 0) or (config.opt_params == {}) then 
 
 	-- Создаём проект
 	create_project(config)
@@ -585,6 +584,7 @@ else
 	showconsole()
 	clearconsole()
 
+	-- Ф-ция, выполняющая выстрел с параметрами, записанными в config и возвращающая полученную скорость пули
 	function opt_shot(config)
 		create_project(config)
 		local result = simulate(config)

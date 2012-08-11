@@ -494,7 +494,7 @@ function optimize(data, opt_params, fun, log)
 		local str = ""
 		for o_name, o_value in %opt_params do
 			if str ~= "" then str = str .. " " end
-			str = str .. o_name .. "=" .. %data[o_name]
+			str = str .. format("%s=%.6f", o_name, %data[o_name])
 		end
 		return str
 	end

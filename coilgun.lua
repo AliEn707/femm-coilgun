@@ -1,4 +1,5 @@
--- Скрипт для программы FEMM 4.2 
+-- Скрипт для программы FEMM 4.2
+-- Версия скрипта - 121
 --------------------------------------------------------------------------------
 
 setcompatibilitymode(1) -- Совместимость с версией 4.2
@@ -23,10 +24,9 @@ function read_config_file(file_name)
 	dofile(file_name)
 	
 	local config = conf
-	config.opt_params = {}
-	for name, value in opt do
-		if value ~= nil then config.opt_params[name] = value end
-	end
+	conf = nil
+	config.opt_params = opt or {}
+	opt = nil
 	
 	local t_iz = sqrt(config.d_pr) * 0.07
 	config.d_pr_iz = config.d_pr+t_iz -- Диаметр провода в изоляции
@@ -39,25 +39,29 @@ function read_config_file(file_name)
 	if config.d_otv > (config.d_puli-0.5) then config.d_otv = config.d_puli - 0.5 end
 	if config.d_otv < 0 then config.d_otv = 0 end
 	
-	-- система СИ - метр, Фарад
-	config.c       = config.c / 1000000
-	config.d_pr    = config.d_pr / 1000
-	config.d_pr_iz = config.d_pr_iz / 1000
-	config.l_puli  = config.l_puli / 1000
-	config.d_puli  = config.d_puli / 1000
-	config.l_otv   = config.l_otv / 1000
-	config.d_otv   = config.d_otv / 1000
-	config.d_stv   = config.d_stv / 1000
-	config.l_kat   = config.l_kat / 1000
-	config.d_kat   = config.d_kat / 1000
-	config.l_sdv   = config.l_sdv / 1000
-	config.l_mag   = config.l_mag / 1000
-	config.l_mag_y = config.l_mag_y / 1000
-	config.nagr    = config.nagr / 1000
+	-- ф-ция приводин настройку p в систему си
+	function correct_params(p)
+		if p.c       then p.c       = p.c       / 1000000 end
+		if p.d_pr    then p.d_pr    = p.d_pr    / 1000    end
+		if p.d_pr_iz then p.d_pr_iz = p.d_pr_iz / 1000    end
+		if p.l_puli  then p.l_puli  = p.l_puli  / 1000    end
+		if p.d_puli  then p.d_puli  = p.d_puli  / 1000    end
+		if p.l_otv   then p.l_otv   = p.l_otv   / 1000    end
+		if p.d_otv   then p.d_otv   = p.d_otv   / 1000    end
+		if p.d_stv   then p.d_stv   = p.d_stv   / 1000    end
+		if p.l_kat   then p.l_kat   = p.l_kat   / 1000    end
+		if p.d_kat   then p.d_kat   = p.d_kat   / 1000    end
+		if p.l_sdv   then p.l_sdv   = p.l_sdv   / 1000    end
+		if p.l_mag   then p.l_mag   = p.l_mag   / 1000    end
+		if p.l_mag_y then p.l_mag_y = p.l_mag_y / 1000    end
+		if p.nagr    then p.nagr    = p.nagr    / 1000    end
+	end
 	
-	if config.opt_params.l_kat ~= nil then config.opt_params.l_kat = config.opt_params.l_kat/1000 end
-	if config.opt_params.d_kat ~= nil then config.opt_params.d_kat = config.opt_params.d_kat/1000 end
-	if config.opt_params.l_sdv ~= nil then config.opt_params.l_sdv = config.opt_params.l_sdv/1000 end
+	-- переводим параметры выстрела в систему СИ (метр, Фарад)
+	correct_params(config)
+	
+	-- переводим параметры оптимизации в систему СИ
+	correct_params(config.opt_params)
 	
 	return config
 end
@@ -584,11 +588,12 @@ else
 	showconsole()
 	clearconsole()
 
-	-- Ф-ция, выполняющая выстрел с параметрами, записанными в config и возвращающая полученную скорость пули
+	-- Ф-ция, выполняющая выстрел с параметрами, записанными в config и возвращающая полученную скорость пули или КПД
 	function opt_shot(config)
 		create_project(config)
 		local result = simulate(config)
-		return result.vel
+		if (config.opt_t == nil) then return result.vel end
+		return result[config.opt_t]
 	end
 
 	-- Подбираем оптимальные значения

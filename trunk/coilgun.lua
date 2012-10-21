@@ -5,7 +5,7 @@
 setcompatibilitymode(1) -- Совместимость с версией 4.2
 
 ----[ Всякие константы ]-----------------------------------------------------------------------------------------------
-vers          = 119          -- Версия скрипта
+vers          = 121          -- Версия скрипта
 k_rc          = 140          -- Постоянная константа RC для распространённых электрколитических нденсаторов, Ом*мкФ
 coil_meshsize = 0.5          -- Размер сетки катушки, мм
 proj_meshsize = 0.35         -- Размер сетки пули, мм
@@ -38,30 +38,6 @@ function read_config_file(file_name)
 	if config.l_otv < 0 then config.l_otv = 0 end
 	if config.d_otv > (config.d_puli-0.5) then config.d_otv = config.d_puli - 0.5 end
 	if config.d_otv < 0 then config.d_otv = 0 end
-	
-	-- ф-ция приводин настройку p в систему си
-	function correct_params(p)
-		if p.c       then p.c       = p.c       / 1000000 end
-		if p.d_pr    then p.d_pr    = p.d_pr    / 1000    end
-		if p.d_pr_iz then p.d_pr_iz = p.d_pr_iz / 1000    end
-		if p.l_puli  then p.l_puli  = p.l_puli  / 1000    end
-		if p.d_puli  then p.d_puli  = p.d_puli  / 1000    end
-		if p.l_otv   then p.l_otv   = p.l_otv   / 1000    end
-		if p.d_otv   then p.d_otv   = p.d_otv   / 1000    end
-		if p.d_stv   then p.d_stv   = p.d_stv   / 1000    end
-		if p.l_kat   then p.l_kat   = p.l_kat   / 1000    end
-		if p.d_kat   then p.d_kat   = p.d_kat   / 1000    end
-		if p.l_sdv   then p.l_sdv   = p.l_sdv   / 1000    end
-		if p.l_mag   then p.l_mag   = p.l_mag   / 1000    end
-		if p.l_mag_y then p.l_mag_y = p.l_mag_y / 1000    end
-		if p.nagr    then p.nagr    = p.nagr    / 1000    end
-	end
-	
-	-- переводим параметры выстрела в систему СИ (метр, Фарад)
-	correct_params(config)
-	
-	-- переводим параметры оптимизации в систему СИ
-	correct_params(config.opt_params)
 	
 	return config
 end
@@ -107,17 +83,17 @@ end
 function create_project(config)
 	local Vol = 3 -- Кратность свободного пространства вокруг модели (рекомендуется значение от 3 до 5)
 	
-	local d_otv = config.d_otv * 1000
-	local d_kat = config.d_kat * 1000
-	local l_kat = config.l_kat * 1000
-	local l_mag = config.l_mag * 1000
-	local l_mag_y = config.l_mag_y * 1000
-	local d_stv = config.d_stv * 1000
-	local l_puli = config.l_puli * 1000
-	local l_sdv = config.l_sdv * 1000
-	local d_puli = config.d_puli * 1000
-	local l_otv = config.l_otv * 1000
-	local d_pr = config.d_pr * 1000
+	local d_otv = config.d_otv
+	local d_kat = config.d_kat
+	local l_kat = config.l_kat
+	local l_mag = config.l_mag
+	local l_mag_y = config.l_mag_y
+	local d_stv = config.d_stv
+	local l_puli = config.l_puli
+	local l_sdv = config.l_sdv
+	local d_puli = config.d_puli
+	local l_otv = config.l_otv
+	local d_pr = config.d_pr
 	
 	create(0) -- создаем документ для магнитных задач
 	mi_probdef(0,"millimeters","axi",1E-8,30) -- создаем задачу
@@ -268,6 +244,15 @@ end
 ----[ Симуляция одного выстрела по параметрам, заданным в config ]-----------------------------------------------------
 function simulate(config)
 	local result = {}
+	
+	-- переводим в состему Си
+	local c       = config.c       / 1000000
+	local d_pr    = config.d_pr    / 1000
+	local d_pr_iz = config.d_pr_iz / 1000
+	local l_puli  = config.l_puli  / 1000
+	local l_kat   = config.l_kat   / 1000
+	local l_sdv   = config.l_sdv   / 1000
+	local nagr    = config.nagr    / 1000
 
 	-- Начинаем
 	result.start_date = date()
@@ -284,23 +269,23 @@ function simulate(config)
 	mo_groupselectblock(1)
 	local Vpuli = mo_blockintegral(10)   -- Объем пули, Метр^3
 	mo_clearblock()
-	result.m_puli=ro*Vpuli + config.nagr -- Масса пули плюс оперение, кг
+	result.m_puli=ro*Vpuli + nagr -- Масса пули плюс оперение, кг
 
 	if config.k_mot < 1 then
-		result.n = config.k_mot * Skat / (config.d_pr_iz * config.d_pr_iz) -- Количество витков в катушке уточнённое
+		result.n = config.k_mot * Skat / (d_pr_iz * d_pr_iz) -- Количество витков в катушке уточнённое
 	else 
 		result.n = config.k_mot -- или явно задано
 	end
 
-	local end_x = config.l_puli + config.l_kat - config.l_sdv -- Положение пули за пределом катушки
+	local end_x = l_puli + l_kat - l_sdv -- Положение пули за пределом катушки
 
-	result.dl_provoda = result.n * 2 * pi * (config.d_kat + config.d_stv) / 4 -- Длина обмоточного провода уточнённая, м
-	result.r_kat = sigma * result.dl_provoda / (pi * (config.d_pr / 2)^2)     -- Сопротивление всего обмоточного провода катушки, Ом
+	result.dl_provoda = result.n * 2 * pi * ((config.d_kat + config.d_stv)/1000) / 4 -- Длина обмоточного провода уточнённая, м
+	result.r_kat = sigma * result.dl_provoda / (pi * (d_pr / 2)^2)     -- Сопротивление всего обмоточного провода катушки, Ом
 	result.r = result.r_v + result.r_kat                                      -- Полное сопротивление системы
 
 	--Устанавливаем число витков, а силу тока 100 А для оценки индуктивности
 	mi_clearselected()
-	mi_selectlabel(config.d_stv * 1000 / 2 + (config.d_kat / 2 - config.d_stv / 2) * 1000 / 2, 0) 
+	mi_selectlabel(config.d_stv / 2 + (config.d_kat / 2 - config.d_stv / 2) / 2, 0) 
 	mi_setblockprop("Cu", 0, coil_meshsize, coil_name, "", 2, result.n) -- последнее значение - число витков
 	mi_clearselected()
 	mi_modifycircprop(coil_name, 1, 100)
@@ -378,7 +363,7 @@ function simulate(config)
 
 		-- Расчитываем ток и напряжение на конденсаторе
 		I = I + dt * (Uc - I * result.r - I * dL / dt) / Fii
-		Uc = Uc - dt * I / config.c
+		Uc = Uc - dt * I / c
 		if Uc < 0 then Uc = 0 end --если стоит паралельный диод
 
 		if (config.mode > 0) and (result.vel < result.v_max) then I = 0 end
@@ -402,8 +387,8 @@ function simulate(config)
 	result.f_aver    = result.f_aver / (dt * kc)
 	result.e_puli    = (result.m_puli * result.vel^2) / 2 
 	result.e_puli0   = (result.m_puli * config.vel0^2) / 2
-	result.e_c0      = (config.c * config.u^2) / 2
-	result.e_c       = (config.c * Uc^2) / 2
+	result.e_c0      = (c * config.u^2) / 2
+	result.e_c       = (c * Uc^2) / 2
 	result.de_puli   = result.e_puli - result.e_puli0
 	result.de_c      = result.e_c0 - result.e_c
 	result.eff       = result.de_puli * 100 / result.de_c
@@ -429,7 +414,7 @@ function save_result_to_file(file_name, config, result)
 	save(format("Версия скрипта %i", vers))
 	save(format("Общее время, микросекунд  = %i", result.t*1000000))
 	save(format("Интервал расчёта,  мкс    = %i", config.delta_t))
-	save(format("Ёмкость конденсатора, мкФ = %.1f", config.c*1000000))
+	save(format("Ёмкость конденсатора, мкФ = %.1f", config.c))
 	save(format("Начальное напряжение, В   = %.1f", config.u))
 	save(format("Общее сопротивление, Ом   = %.3f", result.r))
 	save(format("Внешнее сопротивление, Ом = %.3f", result.r_v))
@@ -437,26 +422,26 @@ function save_result_to_file(file_name, config, result)
 	save("\n----- ПРОВОД ---------------------------------------------")
 	save(format("Сопротивление обмотки, Ом = %.3f", result.r_kat))
 	save(format("Количество витков         = %i", result.n))
-	save(format("Диаметр провода, мм       = %.2f", config.d_pr*1000))
+	save(format("Диаметр провода, мм       = %.2f", config.d_pr))
 	save(format("Общая длина провода, м    = %.1f", result.dl_provoda))
 
 	save("\n----- КАТУШКА --------------------------------------------")
-	save(format("Длина катушки, мм                            = %.1f", config.l_kat*1000))
-	save(format("Внешний диаметр катушки, мм                  = %.1f", config.d_kat*1000))
+	save(format("Длина катушки, мм                            = %.1f", config.l_kat))
+	save(format("Внешний диаметр катушки, мм                  = %.1f", config.d_kat))
 	save(format("Индуктивность катушки в старт. позиции, мкГн = %.1f", result.l*1000000))
-	save(format("Толщина щёчек внешнего магнитопровода, мм    = %.1f", config.l_mag*1000))
-	save(format("Толщина корпуса внешнего магнитопровода, мм  = %.1f", config.l_mag_y*1000))
-	save(format("Внутренний диаметр катушки, мм               = %.1f", config.d_stv*1000))
+	save(format("Толщина щёчек внешнего магнитопровода, мм    = %.1f", config.l_mag))
+	save(format("Толщина корпуса внешнего магнитопровода, мм  = %.1f", config.l_mag_y))
+	save(format("Внутренний диаметр катушки, мм               = %.1f", config.d_stv))
 
 	save("\n----- ПУЛЯ --------------------------------------------")
-	save(format("Масса пули без оперения, г       = %.2f", (result.m_puli-config.nagr)*1000))
-	save(format("Длина пули, мм                   = %.1f", config.l_puli*1000))
-	save(format("Диаметр пули, мм                 = %.1f", config.d_puli*1000))
-	save(format("Глубина отверстия в пуле, мм     = %.1f", config.l_otv*1000))
-	save(format("Диаметр отверстия, мм            = %.2f", config.d_otv*1000))
-	save(format("Масса оперения, г                = %.2f", config.nagr*1000))
+	save(format("Масса пули без оперения, г       = %.2f", result.m_puli*1000-config.nagr))
+	save(format("Длина пули, мм                   = %.1f", config.l_puli))
+	save(format("Диаметр пули, мм                 = %.1f", config.d_puli))
+	save(format("Глубина отверстия в пуле, мм     = %.1f", config.l_otv))
+	save(format("Диаметр отверстия, мм            = %.2f", config.d_otv))
+	save(format("Масса оперения, г                = %.2f", config.nagr))
 	save(format("Масса пули вместе с оперением, г = %.2f", result.m_puli*1000))
-	save(format("Стартовая позиция пули, мм       = %.1f", config.l_sdv*1000))
+	save(format("Стартовая позиция пули, мм       = %.1f", config.l_sdv))
 
 	save("\n----- ЭНЕРГИЯ ------------------------------------------")
 	save(format("Энергия пули начальная, Дж         = %.1f", result.e_puli0))
@@ -498,7 +483,7 @@ function optimize(data, opt_params, fun, log)
 		local str = ""
 		for o_name, o_value in %opt_params do
 			if str ~= "" then str = str .. " " end
-			str = str .. format("%s=%.6f", o_name, %data[o_name])
+			str = str .. format("%s=%.3f", o_name, %data[o_name])
 		end
 		return str
 	end

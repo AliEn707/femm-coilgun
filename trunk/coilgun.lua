@@ -312,6 +312,7 @@ function simulate(config)
 	result.vel = config.vel0
 	result.items = {}                   -- создаем массив (таблицу как её называют в Lua)
 
+	local have_to_stop = 0
 	repeat -- начинаем цикл
 		result.t = result.t+dt
 
@@ -368,10 +369,6 @@ function simulate(config)
 		Uc = Uc - dt * I / c
 		if Uc < 0 then Uc = 0 end --если стоит паралельный диод
 
-		if (config.mode > 0) and (result.vel < result.v_max) then I = 0 end
-		
-		if x > end_x and Force > -1 then I = 0 end -- Пуля вылетела за пределы катушки и сила очень маленькая
-		if x < 0 then I = 0 end -- Пуля вылетела назад
 	
 		-- записываем данные в массив
 		local res_item = {}
@@ -383,8 +380,20 @@ function simulate(config)
 		res_item.u   = Uc
 		result.items[kc] = res_item
 		kc = kc + 1
-		
-	until (I <= 0) or (result.vel < 0 )  -- повторяем расчет, пока не будет тока 
+
+		-- Проверка, не пора ли остановить симуляцию:
+		-- ... закончился ток
+		if I <= 0 then have_to_stop = 1 end
+		-- ... пуля полетела в обратную сторону
+		if result.vel < 0 then have_to_stop = 1 end 
+		-- ... пуля вылетела за пределы катушки и сила очень маленькая
+		if (x > end_x) and (Force < 0) then have_to_stop = 1 end 
+		-- ... пуля вылетела назад
+		if x < 0 then have_to_stop = 1 end 
+		-- ... режим "транзистор" и пуля начала тормозиться
+		if (config.mode > 0) and (result.vel < result.v_max) then have_to_stop = 1 end 
+	
+	until have_to_stop ~= 0
 
 	result.f_aver    = result.f_aver / (dt * kc)
 	result.e_puli    = (result.m_puli * result.vel^2) / 2 

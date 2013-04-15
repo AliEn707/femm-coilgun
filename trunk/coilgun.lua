@@ -554,11 +554,34 @@ function optimize(data, opt_params, fun, log)
 	log_str("Готово! Оптимальные значения: " .. get_values_str())
 end
 
+-- [ Показывает и очищает консоль ]------------------------------------------------------------------------------------
+function prepare_console()
+	showconsole()
+	clearconsole()
+end
+
+-- [ Функция, которая проверяет, есть ли на диске файл с именем name ]-------------------------------------------------
+function file_exists(name)
+	local f = openfile(name, "r")
+	if f ~= nil then 
+		closefile(f)
+		return 1
+	else 
+		return 0
+	end
+end
+
 ----[ Собственно, вся работа скрипта ]---------------------------------------------------------------------------------
 
 -- Читаем конфиг
 local conf_file_name=prompt("Введите имя файла даных, без расширения .txt") 
-local config = read_config_file(conf_file_name .. ".txt")
+local conf_full_name = conf_file_name .. ".txt"
+if file_exists(conf_full_name) == 0 then
+	prepare_console()
+	print('Не найден файл настроек "' .. conf_full_name .. '"')
+	return
+end
+local config = read_config_file(conf_full_name)
 
 -- Если не надо ничего оптимизировать
 if (config.opt == null) or (config.opt == 0) or (config.opt_params == {}) then 
@@ -574,15 +597,13 @@ if (config.opt == null) or (config.opt == 0) or (config.opt_params == {}) then
 	save_result_to_file(res_file_name, config, result)
 
 	-- Выводим информацию в консоль
-	showconsole()
-	clearconsole()
+	prepare_console()
 	print ("-----------------------------------")
 	print ("Полученные данные записаны в файл: " .. res_file_name)
 	
 -- Оптимизируем по config.opt_params
 else
-	showconsole()
-	clearconsole()
+	prepare_console()
 
 	-- Ф-ция, выполняющая выстрел с параметрами, записанными в config и возвращающая полученную скорость пули или КПД
 	function opt_shot(config)

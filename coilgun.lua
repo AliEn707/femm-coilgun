@@ -4,7 +4,7 @@
 setcompatibilitymode(1) -- Совместимость с версией 4.2
 
 ----[ Всякие константы ]-----------------------------------------------------------------------------------------------
-vers          = 123          -- Версия скрипта
+vers          = 124          -- Версия скрипта
 k_rc          = 140          -- Постоянная константа RC для распространённых электрколитических нденсаторов, Ом*мкФ
 coil_meshsize = 0.5          -- Размер сетки катушки, мм
 proj_meshsize = 0.35         -- Размер сетки пули, мм
@@ -80,7 +80,7 @@ end
 
 ----[ Создаёт проект в FEMM для расчётов ]-----------------------------------------------------------------------------
 function create_project(config)
-	local Vol = 3 -- Кратность свободного пространства вокруг модели (рекомендуется значение от 3 до 5)
+	local Vol = 1.5 -- Кратность свободного пространства вокруг модели (рекомендуется значение от 3 до 5)
 	
 	local d_otv = config.d_otv
 	local d_kat = config.d_kat
@@ -105,13 +105,14 @@ function create_project(config)
 -- Располагаем объекты
 
 	--Создаем пространство в Vol раз большее чем катушка
-	mi_addnode(0,(l_kat+l_mag)*-Vol) -- ставим точку
-	mi_addnode(0,(l_kat+l_mag)*Vol) -- ставим точку
-	mi_addsegment(0,(l_kat+l_mag)*-Vol,0,(l_kat+l_mag)*Vol) -- рисуем линию
-	mi_addarc(0,(l_kat+l_mag)*-5,0,(l_kat+l_mag)*Vol,180,max_segm) -- рисуем дугу
-	mi_addblocklabel((l_kat+l_mag)*0.7*Vol,0) -- добавляем блок
+	local vol_base = max(l_puli + l_kat/2 + l_mag_y - l_sdv, l_mag + d_kat/2)
+	mi_addnode(0, vol_base * -Vol) -- ставим точку
+	mi_addnode(0, vol_base * Vol) -- ставим точку
+	mi_addsegment(0, vol_base * -Vol, 0, vol_base * Vol) -- рисуем линию
+	mi_addarc(0, vol_base * -5, 0, vol_base * Vol, 180, max_segm) -- рисуем дугу
+	mi_addblocklabel(vol_base * 0.7 * Vol, 0) -- добавляем блок
 	mi_clearselected() -- отменяем все 
-	mi_selectlabel((l_kat+l_mag)*0.7*Vol,0) -- выделяем метку блока
+	mi_selectlabel(vol_base * 0.7 * Vol, 0) -- выделяем метку блока
 	mi_setblockprop("Air", 1, "", "", "",0) -- устанавливаем свойства блока с имнем Air и номером блока 0
 	mi_zoomnatural() -- устанавливаем зум так что бы было видно на весь экран
 

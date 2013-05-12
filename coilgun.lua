@@ -304,7 +304,6 @@ function simulate(config)
 	local I = I0                        -- начальное значение тока
 	local Force = 0
 	local Fii = 0
-	local Fix = 0
 	local kc = 1                        -- счетчик циклов, для индекса записи в массив result.items
 
 	result.v_max = config.vel0

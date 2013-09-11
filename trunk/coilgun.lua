@@ -190,18 +190,10 @@ function create_project(config)
 			mi_addsegment(pt1[1], pt1[2], pt2[1], pt2[2])
 		end
 	end	
-	
+
 -- Создаем катушку
 	if (config.k_ark <= 0) then config.k_ark = 0.5 end
-	
-	local extern_coil_points = 
-	{
-		{ d_stv / 2,  l_kat / 2 },
-		{ d_stv / 2, -l_kat / 2 },
-		{ d_kat / 2, -l_kat / 2 },
-		{ d_kat / 2,  l_kat / 2 }
-	}
-	
+
 --  (1)    (2)
 --   *------*
 --   |      |
@@ -217,7 +209,7 @@ function create_project(config)
 		{ -config.k_ark + d_kat/2, -config.k_ark + l_kat/2 }, -- 3
 		{  config.k_ark + d_stv/2, -config.k_ark + l_kat/2 }  -- 4
 	}
-	
+
 	add_all_points(intern_coil_points)
 
 	mi_addblocklabel(d_stv/2+(d_kat/2-d_stv/2)/2,0)
@@ -228,7 +220,7 @@ function create_project(config)
 -- Создаем внешний магнитопровод
 	if (l_mag > 0) then 
 		if (l_mag_y <=0) then l_mag_y = l_mag end
-		
+
 --  (1)           (2)
 --   *-------------*
 --   |             |

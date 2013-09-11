@@ -13,7 +13,9 @@ sigma         = 0.0000000175 -- Удельное сопротивление меди, Ом * Метр
 ro            = 7800         -- Плотность железа, Кг/Метр^3
 pi            = 3.1415926535  
 name_mat      = "Iron"
+air_mat       = "Air"
 coil_name     = "katushka"
+cu_mat        = "Cu"
 
 ----[ Чтение начальных данных из текстового файла ]--------------------------------------------------------------------
 function read_config_file(file_name)
@@ -97,8 +99,8 @@ function create_project(config)
 	create(0) -- создаем документ для магнитных задач
 	mi_probdef(0,"millimeters","axi",1E-8,30) -- создаем задачу
 	mi_saveas("temp.fem") -- сохраняем файл под другим именем
-	mi_addmaterial("Air",1,1) -- добавляем материал воздух
-	mi_addmaterial("Cu",1,1,"","","",58,"","","",3,"","",1,d_pr) -- добавляем материал медный провод диаметром d_pr проводимостью 58
+	mi_addmaterial(air_mat,1,1) -- добавляем материал воздух
+	mi_addmaterial(cu_mat,1,1,"","","",58,"","","",3,"","",1,d_pr) -- добавляем материал медный провод диаметром d_pr проводимостью 58
 	mi_addcircprop(coil_name,0,0,1) -- добавляем катушку 
 	add_iron_material()
 
@@ -113,7 +115,7 @@ function create_project(config)
 	mi_addblocklabel(vol_base * 0.7 * Vol, 0) -- добавляем блок
 	mi_clearselected() -- отменяем все 
 	mi_selectlabel(vol_base * 0.7 * Vol, 0) -- выделяем метку блока
-	mi_setblockprop("Air", 1, "", "", "",0) -- устанавливаем свойства блока с имнем Air и номером блока 0
+	mi_setblockprop(air_mat, 1, "", "", "",0) -- устанавливаем свойства блока с имнем Air и номером блока 0
 	mi_zoomnatural() -- устанавливаем зум так что бы было видно на весь экран
 
 -- Создаем пулю
@@ -177,61 +179,81 @@ function create_project(config)
 	mi_clearselected()
 	mi_selectlabel(d_puli/4,l_kat/2+l_puli/2-l_otv/2-l_sdv)
 	mi_setblockprop(name_mat, 1, proj_meshsize, "", "",1) -- номер блока 1
-
+	
+	function add_all_points(points)
+		local last_i = getn(points)
+		for i, pt in points do mi_addnode(pt[1], pt[2]) end
+		local pt2
+		for i, pt1 in points do
+			if i == last_i then pt2 = points[1]
+			else pt2 = points[i+1] end
+			mi_addsegment(pt1[1], pt1[2], pt2[1], pt2[2])
+		end
+	end	
+	
 -- Создаем катушку
 	if (config.k_ark <= 0) then config.k_ark = 0.5 end
+	
+	local extern_coil_points = 
+	{
+		{ d_stv / 2,  l_kat / 2 },
+		{ d_stv / 2, -l_kat / 2 },
+		{ d_kat / 2, -l_kat / 2 },
+		{ d_kat / 2,  l_kat / 2 }
+	}
+	
+--  (1)    (2)
+--   *------*
+--   |      |
+--   |      |
+--   |      |
+--   *------*
+--  (4)    (3)
 
-	mi_addnode(d_stv/2,l_kat/2) -- основание
-	mi_addnode(d_stv/2,-l_kat/2) -- основание
-	mi_addnode(d_kat/2,l_kat/2) -- внешняя начальная часть
-	mi_addnode(d_kat/2,-l_kat/2) -- внешняя конечная часть
-
-	mi_addnode(config.k_ark+d_stv/2,-config.k_ark+l_kat/2) -- основание
-	mi_addnode(config.k_ark+d_stv/2,config.k_ark-l_kat/2) -- основание
-	mi_addnode(-config.k_ark+d_kat/2,-config.k_ark+l_kat/2) -- внешняя начальная часть
-	mi_addnode(-config.k_ark+d_kat/2,config.k_ark-l_kat/2) -- внешняя конечная часть
-
-	mi_addsegment(d_stv/2,-l_kat/2,d_stv/2,l_kat/2)
-	mi_addsegment(d_stv/2,l_kat/2,d_kat/2,l_kat/2)
-	mi_addsegment(d_kat/2,l_kat/2,d_kat/2,-l_kat/2)
-	mi_addsegment(d_kat/2,-l_kat/2,d_stv/2,-l_kat/2)
-
-	mi_addsegment(config.k_ark+d_stv/2,config.k_ark-l_kat/2,config.k_ark+d_stv/2,-config.k_ark+l_kat/2)
-	mi_addsegment(config.k_ark+d_stv/2,-config.k_ark+l_kat/2,-config.k_ark+d_kat/2,-config.k_ark+l_kat/2)
-	mi_addsegment(-config.k_ark+d_kat/2,-config.k_ark+l_kat/2,-config.k_ark+d_kat/2,config.k_ark-l_kat/2)
-	mi_addsegment(-config.k_ark+d_kat/2,config.k_ark-l_kat/2,config.k_ark+d_stv/2,config.k_ark-l_kat/2)
-
-	mi_clearselected()
-	mi_selectnode(config.k_ark+d_stv/2,-config.k_ark+l_kat/2) -- основание
-	mi_selectnode(config.k_ark+d_stv/2,config.k_ark-l_kat/2) -- основание
-	mi_selectnode(-config.k_ark+d_kat/2,-config.k_ark+l_kat/2)
-	mi_selectnode(-config.k_ark+d_kat/2,config.k_ark-l_kat/2)
-	mi_setnodeprop("",2)
+	local intern_coil_points = 
+	{
+		{  config.k_ark + d_stv/2, -config.k_ark + l_kat/2 }, -- 1
+		{  config.k_ark + d_stv/2,  config.k_ark - l_kat/2 }, -- 2
+		{ -config.k_ark + d_kat/2,  config.k_ark - l_kat/2 }, -- 3
+		{ -config.k_ark + d_kat/2, -config.k_ark + l_kat/2 }  -- 4
+	}
+	
+	add_all_points(intern_coil_points)
 
 	mi_addblocklabel(d_stv/2+(d_kat/2-d_stv/2)/2,0)
 	mi_clearselected()
 	mi_selectlabel(d_stv/2+(d_kat/2-d_stv/2)/2,0)
-	mi_setblockprop("Cu", 0, coil_meshsize, coil_name, "",2) -- номер блока 2
-
-	mi_addblocklabel(config.k_ark/2+d_stv/2,-config.k_ark+l_kat/4) -- добавляем блок
-	mi_clearselected() -- отменяем все 
-	mi_selectlabel(config.k_ark/2+d_stv/2,-config.k_ark+l_kat/4) -- выделяем метку блока
-	mi_setblockprop("Air", 1, coil_meshsize, "", "",4) -- устанавливаем свойства блока с имнем Air и номером блока 4
+	mi_setblockprop(cu_mat, 0, coil_meshsize, coil_name, "",2) -- номер блока 2
 
 -- Создаем внешний магнитопровод
 	if (l_mag > 0) then 
 		if (l_mag_y <=0) then l_mag_y = l_mag end
-		mi_addnode(d_stv/2,l_kat/2+l_mag_y)
-		mi_addnode(d_kat/2+l_mag,l_kat/2+l_mag_y)
-		mi_addnode(d_kat/2+l_mag,-l_kat/2-l_mag_y)	
-		mi_addnode(d_stv/2,-l_kat/2-l_mag_y)
-
-		mi_addsegment(d_stv/2,l_kat/2,d_stv/2,l_kat/2+l_mag_y)
-		mi_addsegment(d_stv/2,l_kat/2+l_mag_y,d_kat/2+l_mag,l_kat/2+l_mag_y)
-		mi_addsegment(d_kat/2+l_mag,l_kat/2+l_mag_y,d_kat/2+l_mag,-l_kat/2-l_mag_y)
-
-		mi_addsegment(d_kat/2+l_mag,-l_kat/2-l_mag_y,d_stv/2,-l_kat/2-l_mag_y)
-		mi_addsegment(d_stv/2,-l_kat/2-l_mag_y,d_stv/2,-l_kat/2)
+		
+--  (1)           (2)
+--   *-------------*
+--   |             |
+--   *-------*     |
+-- (8)    (7)|     |
+--           |     |
+-- (5)    (6)|     |
+--   *-------*     |
+--   |             |
+--   *-------------*
+--  (4)           (3)
+		
+		local mag_core_points = 
+		{
+			{ d_stv / 2,          l_kat / 2 + l_mag_y }, -- 1
+			{ d_kat / 2 + l_mag,  l_kat / 2 + l_mag_y }, -- 2
+			{ d_kat / 2 + l_mag, -l_kat / 2 - l_mag_y }, -- 3
+			{ d_stv / 2,         -l_kat / 2 - l_mag_y }, -- 4
+			{ d_stv / 2,         -l_kat / 2           }, -- 5
+			{ d_kat / 2,         -l_kat / 2           }, -- 6
+			{ d_kat / 2,          l_kat / 2           }, -- 7
+			{ d_stv / 2,          l_kat / 2           }  -- 8
+		};
+		
+		add_all_points(mag_core_points)
 
 		mi_addblocklabel(d_kat/2+l_mag/2,0)
 		mi_clearselected()

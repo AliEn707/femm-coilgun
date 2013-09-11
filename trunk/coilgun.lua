@@ -212,10 +212,10 @@ function create_project(config)
 
 	local intern_coil_points = 
 	{
-		{  config.k_ark + d_stv/2, -config.k_ark + l_kat/2 }, -- 1
-		{  config.k_ark + d_stv/2,  config.k_ark - l_kat/2 }, -- 2
-		{ -config.k_ark + d_kat/2,  config.k_ark - l_kat/2 }, -- 3
-		{ -config.k_ark + d_kat/2, -config.k_ark + l_kat/2 }  -- 4
+		{  config.k_ark + d_stv/2,  config.k_ark - l_kat/2 }, -- 1
+		{ -config.k_ark + d_kat/2,  config.k_ark - l_kat/2 }, -- 2
+		{ -config.k_ark + d_kat/2, -config.k_ark + l_kat/2 }, -- 3
+		{  config.k_ark + d_stv/2, -config.k_ark + l_kat/2 }  -- 4
 	}
 	
 	add_all_points(intern_coil_points)

@@ -81,8 +81,27 @@ function add_iron_material()
 end
 
 ----[ Создаёт проект в FEMM для расчётов ]-----------------------------------------------------------------------------
+
+function add_all_points(points)
+	for i, pt in points do mi_addnode(pt[1], pt[2]) end
+end
+
+function select_all_points(points)
+	for i, pt in points do mi_selectnode(pt[1], pt[2]) end
+end
+
+function add_all_segments(points)
+	local last_i = getn(points)
+	local pt2
+	for i, pt1 in points do
+		if i == last_i then pt2 = points[1]
+		else pt2 = points[i+1] end
+		mi_addsegment(pt1[1], pt1[2], pt2[1], pt2[2])
+	end
+end
+
 function create_project(config)
-	local Vol = 1.5 -- Кратность свободного пространства вокруг модели (рекомендуется значение от 3 до 5)
+	local Vol = 1.5 -- Кратность свободного пространства вокруг модели
 	
 	local d_otv = config.d_otv
 	local d_kat = config.d_kat
@@ -129,67 +148,60 @@ function create_project(config)
 		mi_selectnode (0,l_kat/2+l_puli-l_sdv)
 		mi_setnodeprop("",1)
 		mi_addarc(0,l_kat/2-l_sdv,0,l_kat/2+l_puli-l_sdv,180,5)
+
 	-- иначе просто цилиндр
 	else
-		mi_addnode(0,l_kat/2-l_sdv)
-		mi_addnode(d_puli/2,l_kat/2-l_sdv)
-		mi_addnode(d_puli/2,l_kat/2+l_puli-l_sdv)
-		-- точки для отверстия в пуле
-		if d_otv>0 then 
-			mi_addnode(0,l_kat/2-l_sdv+l_puli-l_otv) -- точка внутри на средней линии
-			mi_addnode(d_otv/2,l_kat/2-l_sdv+l_puli-l_otv) -- точка внутри пули
-			mi_addnode(d_otv/2,l_kat/2+l_puli-l_sdv) -- точка на донышке пули
-		else
-			mi_addnode(0,l_kat/2+l_puli-l_sdv)
-		end
+		local y1 = l_kat / 2 + l_puli - l_sdv
+		local y2 = l_kat / 2 - l_sdv
+		local x = d_puli / 2
+		local projectile_points;
 
+		if d_otv > 0 then 
+--              (6) *-----* (1)
+--                  |     |
+--          (4) *---*(5)  |
+--              |         |
+--              |         |
+--              |         |
+--              |         |
+--          (3) *---------* (2)
+			projectile_points = {
+				{ x,       y1       }, -- 1
+				{ x,       y2       }, -- 2
+				{ 0,       y2       }, -- 3
+				{ 0,       y1-l_otv }, -- 4
+				{ d_otv/2, y1-l_otv }, -- 5
+				{ d_otv/2, y1       }  -- 6
+			}		
+		else
+--          (1) *---------* (2)
+--              |         |
+--              |         |
+--              |         |
+--              |         |
+--              |         |
+--              |         |
+--          (4) *---------* (3)
+			projectile_points = {
+				{ 0, y1 }, -- 1
+				{ x, y1 }, -- 2
+				{ x, y2 }, -- 3
+				{ 0, y2 }  -- 4
+			}
+		end
+		
+		add_all_points(projectile_points)
 		mi_clearselected()
-		mi_selectnode(0,l_kat/2-l_sdv)
-		mi_selectnode(d_puli/2,l_kat/2-l_sdv) 
-		mi_selectnode(d_puli/2,l_kat/2+l_puli-l_sdv)
-
-		if d_otv>0 then
-			mi_selectnode(0,l_kat/2-l_sdv+l_puli-l_otv)
-			mi_selectnode(d_otv/2,l_kat/2-l_sdv+l_puli-l_otv)
-			mi_selectnode(d_otv/2,l_kat/2+l_puli-l_sdv)
-		else
-			mi_selectnode(0,l_kat/2+l_puli-l_sdv)
-		end
-
+		select_all_points(projectile_points)
 		mi_setnodeprop("",1)
-
-		mi_addsegment(d_puli/2,l_kat/2-l_sdv,d_puli/2,l_kat/2+l_puli-l_sdv) -- внешняя линия вверх
-
-		if d_otv>0 then 
-			mi_addsegment(d_puli/2,l_kat/2+l_puli-l_sdv,d_otv/2,l_kat/2+l_puli-l_sdv) -- задний торец
-		else 
-			mi_addsegment(d_puli/2,l_kat/2+l_puli-l_sdv,0,l_kat/2+l_puli-l_sdv) -- задний торец
-		end 
-		if d_otv>0 then  
-			mi_addsegment(d_otv/2,l_kat/2+l_puli-l_sdv,d_otv/2,l_kat/2-l_sdv+l_puli-l_otv) -- стенка отверстия
-			mi_addsegment(d_otv/2,l_kat/2-l_sdv+l_puli-l_otv,0,l_kat/2-l_sdv+l_puli-l_otv) -- дно отверстия
-			mi_addsegment(0,l_kat/2-l_sdv+l_puli-l_otv,0,l_kat/2-l_sdv) -- осевая линия вниз
-		else
-			mi_addsegment(0,l_kat/2+l_puli-l_sdv,0,l_kat/2-l_sdv) -- осевая линия вниз
-		end 
-		mi_addsegment(0,l_kat/2-l_sdv,d_puli/2,l_kat/2-l_sdv) -- передний торец 
+		add_all_segments(projectile_points)
 	end
 
 	mi_addblocklabel(d_puli/4,l_kat/2+l_puli/2-l_otv/2-l_sdv)
 	mi_clearselected()
 	mi_selectlabel(d_puli/4,l_kat/2+l_puli/2-l_otv/2-l_sdv)
 	mi_setblockprop(name_mat, 1, proj_meshsize, "", "",1) -- номер блока 1
-	
-	function add_all_points(points)
-		local last_i = getn(points)
-		for i, pt in points do mi_addnode(pt[1], pt[2]) end
-		local pt2
-		for i, pt1 in points do
-			if i == last_i then pt2 = points[1]
-			else pt2 = points[i+1] end
-			mi_addsegment(pt1[1], pt1[2], pt2[1], pt2[2])
-		end
-	end	
+
 
 -- Создаем катушку
 	if (config.k_ark <= 0) then config.k_ark = 0.5 end
@@ -202,8 +214,7 @@ function create_project(config)
 --   *------*
 --  (4)    (3)
 
-	local intern_coil_points = 
-	{
+	local intern_coil_points = {
 		{  config.k_ark + d_stv/2,  config.k_ark - l_kat/2 }, -- 1
 		{ -config.k_ark + d_kat/2,  config.k_ark - l_kat/2 }, -- 2
 		{ -config.k_ark + d_kat/2, -config.k_ark + l_kat/2 }, -- 3
@@ -211,6 +222,7 @@ function create_project(config)
 	}
 
 	add_all_points(intern_coil_points)
+	add_all_segments(intern_coil_points)
 
 	mi_addblocklabel(d_stv/2+(d_kat/2-d_stv/2)/2,0)
 	mi_clearselected()
@@ -233,8 +245,7 @@ function create_project(config)
 --   *-------------*
 --  (4)           (3)
 		
-		local mag_core_points = 
-		{
+		local mag_core_points = {
 			{ d_stv / 2,          l_kat / 2 + l_mag_y }, -- 1
 			{ d_kat / 2 + l_mag,  l_kat / 2 + l_mag_y }, -- 2
 			{ d_kat / 2 + l_mag, -l_kat / 2 - l_mag_y }, -- 3
@@ -246,6 +257,7 @@ function create_project(config)
 		};
 		
 		add_all_points(mag_core_points)
+		add_all_segments(mag_core_points)
 
 		mi_addblocklabel(d_kat/2+l_mag/2,0)
 		mi_clearselected()

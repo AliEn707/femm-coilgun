@@ -4,7 +4,7 @@
 setcompatibilitymode(1) -- Совместимость с версией 4.2
 
 ----[ Всякие константы ]-----------------------------------------------------------------------------------------------
-vers          = 124          -- Версия скрипта
+vers          = 125          -- Версия скрипта
 k_rc          = 140          -- Постоянная константа RC для распространённых электрколитических нденсаторов, Ом*мкФ
 coil_meshsize = 0.5          -- Размер сетки катушки, мм
 proj_meshsize = 0.35         -- Размер сетки пули, мм
@@ -31,7 +31,9 @@ function read_config_file(file_name)
 	
 	local t_iz = sqrt(config.d_pr) * 0.07
 	config.d_pr_iz = config.d_pr+t_iz -- Диаметр провода в изоляции
-	config.r_cc = (k_rc / config.c) -- Внутреннее сопротивление конденсатора
+	if (conf.r_cc == nil) or (conf.r_cc == 0) then
+		config.r_cc = (k_rc / config.c) -- Внутреннее сопротивление конденсатора
+	end
 	
 	-- защита от неумех 
 	if config.d_stv < config.d_puli then config.d_stv = config.d_puli + 0.1 end 
@@ -347,7 +349,7 @@ function simulate(config)
 		mi_analyze(1)                                          -- анализируем (скрывая окно анализа "1")
 		mo_reload()                                            -- перезапускаем программу пост процессора
 		mo_groupselectblock(1)
-		Force = mo_blockintegral(19)                           -- Сила действующая на пулю, Ньютон	
+		Force = mo_blockintegral(19)                           -- Сила действующая на пулю, Ньютон
 		Force = Force * -1                                     -- ставим "-" из за координат (направление силы в сторону уменьшения координаты)
 		result.f_aver = result.f_aver + Force * dt
 		_,_,_,_,flux_re,_ = mo_getcircuitproperties(coil_name) -- получаем данные с катушки

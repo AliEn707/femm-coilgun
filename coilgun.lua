@@ -31,7 +31,7 @@ function read_config_file(file_name)
 	
 	local t_iz = sqrt(config.d_pr) * 0.07
 	config.d_pr_iz = config.d_pr+t_iz -- Диаметр провода в изоляции
-	if (conf.r_cc == nil) or (conf.r_cc == 0) then
+	if (config.r_cc == nil) or (config.r_cc == 0) then
 		config.r_cc = (k_rc / config.c) -- Внутреннее сопротивление конденсатора
 	end
 	
@@ -454,6 +454,7 @@ function save_result_to_file(file_name, config, result)
 	save(format("Общее время, микросекунд  = %i", result.t*1000000))
 	save(format("Интервал расчёта,  мкс    = %i", config.delta_t))
 	save(format("Ёмкость конденсатора, мкФ = %.1f", config.c))
+	save(format("ESR конденсатора, Ом      = %.2f", config.r_cc))
 	save(format("Начальное напряжение, В   = %.1f", config.u))
 	save(format("Общее сопротивление, Ом   = %.3f", result.r))
 	save(format("Внешнее сопротивление, Ом = %.3f", result.r_v))

@@ -4,7 +4,7 @@
 setcompatibilitymode(1) -- Совместимость с версией 4.2
 
 ----[ Всякие константы ]-----------------------------------------------------------------------------------------------
-vers          = 125          -- Версия скрипта
+vers          = 126          -- Версия скрипта
 k_rc          = 140          -- Постоянная константа RC для распространённых электрколитических нденсаторов, Ом*мкФ
 coil_meshsize = 0.5          -- Размер сетки катушки, мм
 proj_meshsize = 0.35         -- Размер сетки пули, мм
@@ -380,7 +380,7 @@ function simulate(config)
 		mi_modifycircprop(coil_name, 1 , I * 1.001)            -- Устанавливает ток, увельченный на 1.001
 		mi_analyze(1)                                          -- анализируем (скрывая окно анализа "1")
 		mo_reload()                                            -- перезапускаем программу пост процессора
-		_,_,_,_,flux_re,_ = mo_getcircuitproperties(coil_name) -- получаем данные с катушки
+		current_re,_,_,_,flux_re,_ = mo_getcircuitproperties(coil_name) -- получаем данные с катушки
 		Fi1 = flux_re                                          -- магнитный поток при I=I+0.001*I, dI=0.001*I 
 
 		-- Рассчитываем dFi/dI
@@ -406,6 +406,7 @@ function simulate(config)
 		res_item.x   = x*1000
 		res_item.t   = result.t*1000000
 		res_item.u   = Uc
+		res_item.l   = 1000000 * flux_re / current_re
 		result.items[kc] = res_item
 		kc = kc + 1
 
@@ -499,12 +500,12 @@ function save_result_to_file(file_name, config, result)
 	save(format("Максимальная скорость пули, м/с = %.1f", result.v_max))
 
 	save("\n------ Data of simulation -------------------------------")
-	save("    Ток(А)    Напр(В)    Сила(Н) Скор.(м/с)   Поз.(мм) Врем.(мкс)")
+	save("    Ток(А)    Напр(В)    Сила(Н) Скор.(м/с)   Поз.(мм) Врем.(мкс) Инд-ть(мкГн)")
 	for i, item in result.items do
 		save(
 			format(
-				"%10.1f %10.1f %10.2f %10.2f %10.3f %10.0f", 
-				item.i, item.u, item.f, item.vel, item.x, item.t
+				"%10.1f %10.1f %10.2f %10.2f %10.3f %10.0f %12.0f", 
+				item.i, item.u, item.f, item.vel, item.x, item.t, item.l
 			)		
 		)
 	end

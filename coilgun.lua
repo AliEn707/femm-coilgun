@@ -136,7 +136,7 @@ function create_project(config)
 -- Располагаем объекты
 
 	--Создаем пространство в Vol раз большее чем катушка
-	local vol_base = max(l_puli + l_kat/2 + l_mag_y - l_sdv, l_mag + d_kat/2)
+	local vol_base = max(l_puli + l_kat/2 + l_mag_y1 + l_mag_y2 - l_sdv, l_mag + d_kat/2)
 	mi_addnode(0, vol_base * -Vol) -- ставим точку
 	mi_addnode(0, vol_base * Vol) -- ставим точку
 	mi_addsegment(0, vol_base * -Vol, 0, vol_base * Vol) -- рисуем линию
@@ -487,7 +487,10 @@ function save_result_to_file(file_name, config, result)
 	save(format("Длина катушки, мм                            = %.1f", config.l_kat))
 	save(format("Внешний диаметр катушки, мм                  = %.1f", config.d_kat))
 	save(format("Индуктивность катушки в старт. позиции, мкГн = %.1f", result.l*1000000))
-	save(format("Толщина щёчек внешнего магнитопровода, мм    = %.1f", config.l_mag_y))
+	save(format("Внешний диаметр щечек внешнего магнитопровода, мм    = %.1f", config.l_mag_d))
+	save(format("Внутренний диаметр щечек внешнего магнитопровода, мм    = %.1f", config.l_mag_in))
+	save(format("Толщина входной щёчки внешнего магнитопровода, мм    = %.1f", config.l_mag_y1))
+	save(format("Толщина выходной щёчки внешнего магнитопровода, мм    = %.1f", config.l_mag_y2))
 	save(format("Толщина корпуса внешнего магнитопровода, мм  = %.1f", config.l_mag))
 	save(format("Внутренний диаметр катушки, мм               = %.1f", config.d_stv))
 

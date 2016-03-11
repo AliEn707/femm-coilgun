@@ -4,7 +4,7 @@
 setcompatibilitymode(1) -- Совместимость с версией 4.2
 
 ----[ Всякие константы ]-----------------------------------------------------------------------------------------------
-vers          = 127          -- Версия скрипта
+vers          = 128          -- Версия скрипта
 k_rc          = 140          -- Постоянная константа RC для распространённых электрколитических нденсаторов, Ом*мкФ
 coil_meshsize = 0.5          -- Размер сетки катушки, мм
 proj_meshsize = 0.35         -- Размер сетки пули, мм
@@ -16,7 +16,9 @@ name_mat      = "Iron"
 air_mat       = "Air"
 coil_name     = "katushka"
 cu_mat        = "Cu"
-
+-- Временная папка
+temp_path =  '' 
+temp_file_name = ''
 ----[ Чтение начальных данных из текстового файла ]--------------------------------------------------------------------
 function read_config_file(file_name)
 	conf = {}
@@ -109,7 +111,10 @@ function create_project(config)
 	local d_kat = config.d_kat
 	local l_kat = config.l_kat
 	local l_mag = config.l_mag
-	local l_mag_y = config.l_mag_y
+	local l_mag_y1 = config.l_mag_y1 or 0
+ 	local l_mag_y2 = config.l_mag_y2 or 0
+ 	local l_mag_d = config.l_mag_d or 0
+ 	local l_mag_in = config.l_mag_in or 0
 	local d_stv = config.d_stv
 	local l_puli = config.l_puli
 	local l_sdv = config.l_sdv
@@ -119,7 +124,10 @@ function create_project(config)
 	
 	create(0) -- создаем документ для магнитных задач
 	mi_probdef(0,"millimeters","axi",1E-8,30) -- создаем задачу
-	mi_saveas("temp.fem") -- сохраняем файл под другим именем
+	
+	execute('md ' .. temp_path)
+	
+	mi_saveas(temp_file_name .. ".fem") -- сохраняем файл под другим именем
 	mi_addmaterial(air_mat,1,1) -- добавляем материал воздух
 	mi_addmaterial(cu_mat,1,1,"","","",58,"","","",3,"","",1,d_pr) -- добавляем материал медный провод диаметром d_pr проводимостью 58
 	mi_addcircprop(coil_name,0,0,1) -- добавляем катушку 
@@ -233,29 +241,38 @@ function create_project(config)
 
 -- Создаем внешний магнитопровод
 	if (l_mag > 0) then 
-		if (l_mag_y <=0) then l_mag_y = l_mag end
+		if (l_mag_y1 <=0) then l_mag_y1 = l_mag end
+		if (l_mag_d <=0) then l_mag_d = l_mag*2+d_kat end
+		if (l_mag_in <= d_stv) then l_mag_in = d_stv end
+		if (l_mag_y2 <= 0) then l_mag_y2 = l_mag_y1 end
 
---  (1)           (2)
---   *-------------*
---   |             |
+--  (1)          (2)
+--   *-----------*
+--   |           |
+--   |        (3)*-*(4)
 --   *-------*     |
--- (8)    (7)|     |
+--(12)   (11)|     |
 --           |     |
--- (5)    (6)|     |
+-- (9)   (10)|     |
 --   *-------*     |
---   |             |
---   *-------------*
---  (4)           (3)
+--   |        (6)*-*(5)
+--   |           |
+--   *-----------*
+--  (8)          (7)
 		
 		local mag_core_points = {
-			{ d_stv / 2,          l_kat / 2 + l_mag_y }, -- 1
-			{ d_kat / 2 + l_mag,  l_kat / 2 + l_mag_y }, -- 2
-			{ d_kat / 2 + l_mag, -l_kat / 2 - l_mag_y }, -- 3
-			{ d_stv / 2,         -l_kat / 2 - l_mag_y }, -- 4
-			{ d_stv / 2,         -l_kat / 2           }, -- 5
-			{ d_kat / 2,         -l_kat / 2           }, -- 6
-			{ d_kat / 2,          l_kat / 2           }, -- 7
-			{ d_stv / 2,          l_kat / 2           }  -- 8
+			{ l_mag_in / 2,       l_kat / 2 + l_mag_y1    }, -- 1
+			{ l_mag_d/2,          l_kat / 2 + l_mag_y1    }, -- 2
+			{ l_mag_d/2,          l_kat / 2 + 0.1        }, -- 3
+			{ d_kat / 2 + l_mag,  l_kat / 2              }, -- 4
+			{ d_kat / 2 + l_mag, -l_kat / 2              }, -- 5
+			{ l_mag_d/2,         -l_kat / 2 - 0.1        }, -- 6
+			{ l_mag_d/2,         -l_kat / 2 - l_mag_y2    }, -- 7
+			{ l_mag_in / 2,      -l_kat / 2 - l_mag_y2    }, -- 8
+			{ l_mag_in / 2,      -l_kat / 2              }, -- 9
+			{ d_kat / 2,         -l_kat / 2              }, -- 10
+			{ d_kat / 2,          l_kat / 2              }, -- 11
+			{ l_mag_in / 2,       l_kat / 2              }  -- 12
 		};
 		
 		add_all_points(mag_core_points)
@@ -435,8 +452,8 @@ function simulate(config)
 	result.stop_date = date()
 
 	-- Удаляем промежуточные файлы
-	remove ("temp.fem")
-	remove ("temp.ans")
+	remove (temp_file_name .. ".fem")
+	remove (temp_file_name .. ".ans")
 	
 	mi_close()
 
@@ -603,16 +620,22 @@ end
 
 ----[ Собственно, вся работа скрипта ]---------------------------------------------------------------------------------
 
+
+
 -- Читаем конфиг
 local conf_file_name=prompt("Введите имя файла даных, без расширения .txt") 
 local conf_full_name = conf_file_name .. ".txt"
+-- Выводим информацию в консоль
+prepare_console()
 if file_exists(conf_full_name) == 0 then
-	prepare_console()
 	print('Не найден файл настроек "' .. conf_full_name .. '"')
 	return
 end
 local config = read_config_file(conf_full_name)
+temp_path = (config.temp_path or getenv('temp') or getenv('tmp') or '.') .. '\\' .. floor(clock())
+temp_file_name = temp_path .. '\\' .. conf_file_name
 
+print('temp dir: ' .. temp_path)
 -- Если не надо ничего оптимизировать
 if (config.opt == null) or (config.opt == 0) or (config.opt_params == {}) then 
 
@@ -623,18 +646,16 @@ if (config.opt == null) or (config.opt == 0) or (config.opt_params == {}) then
 	local result = simulate(config)
 
 	-- Сохраняем результаты в файл
-	local res_file_name = conf_file_name .. " V = " .. result.vel .. ".txt"
+	local res_file_name = conf_file_name .. " V0 = " .. config.vel0 .. " V = " .. result.vel .. ".txt"
 	save_result_to_file(res_file_name, config, result)
 
-	-- Выводим информацию в консоль
-	prepare_console()
+	
 	print ("-----------------------------------")
 	print ("Полученные данные записаны в файл: " .. res_file_name)
 	
 -- Оптимизируем по config.opt_params
 else
-	prepare_console()
-
+	
 	-- Ф-ция, выполняющая выстрел с параметрами, записанными в config и возвращающая полученную скорость пули или КПД
 	function opt_shot(config)
 		create_project(config)
@@ -651,7 +672,7 @@ else
 	local result = simulate(config)
 
 	-- Сохраняем результаты в файл
-	local res_file_name = conf_file_name .. " Vopt = " .. result.vel .. ".txt"
+	local res_file_name = conf_file_name .. " V0 = " .. config.vel0 .. " Vopt = " .. result.vel .. ".txt"
 	save_result_to_file(res_file_name, config, result)
 
 	-- Выводим информацию в консоль
